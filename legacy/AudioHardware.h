@@ -441,6 +441,8 @@ private:
                 int         mFormat;
 
     };
+
+#ifdef QCOM_TUNNEL_LPA_ENABLED
     class AudioSessionOutLPA : public AudioStreamOut{
         public:
         AudioSessionOutLPA(AudioHardware* mHardware,
@@ -577,6 +579,7 @@ private:
         int afd;
         int ionfd;
     };
+#endif //QCOM_TUNNEL_LPA_ENABLED
 
     class AudioStreamInMSM72xx : public AudioStreamIn {
     public:
@@ -680,7 +683,9 @@ private:
             uint32_t    mBluetoothId;
             float       mVoiceVolume;
             AudioStreamOutMSM72xx*  mOutput;
+#ifdef QCOM_TUNNEL_LPA_ENABLED
             AudioSessionOutLPA*  mOutputLPA;
+#endif //QCOM_TUNNEL_LPA_ENABLED
             SortedVector <AudioStreamInMSM72xx*>   mInputs;
             AudioStreamOutDirect*  mDirectOutput;
             int mCurSndDevice;

@@ -694,16 +694,24 @@ AudioStreamOut* AudioHardware::openOutputStream(
         Mutex::Autolock lock(mLock);
 
         // only one output stream allowed
+#ifdef QCOM_TUNNEL_LPA_ENABLED
         if (mOutput && !((flags & AUDIO_OUTPUT_FLAG_DIRECT) && (flags & AUDIO_OUTPUT_FLAG_VOIP_RX))
-                    && !(flags & AUDIO_OUTPUT_FLAG_LPA)) {
+                    && !(flags & AUDIO_OUTPUT_FLAG_LPA))
+#else
+        if (mOutput && !((flags & AUDIO_OUTPUT_FLAG_DIRECT) && (flags & AUDIO_OUTPUT_FLAG_VOIP_RX)))
+#endif
+        {
             if (status) {
                 *status = INVALID_OPERATION;
             }
             ALOGE(" AudioHardware::openOutputStream Only one output stream allowed \n");
             return 0;
         }
+
         status_t lStatus;
-        if((flags & AUDIO_OUTPUT_FLAG_DIRECT) && (flags & AUDIO_OUTPUT_FLAG_VOIP_RX)){
+
+        if((flags & AUDIO_OUTPUT_FLAG_DIRECT) && (flags & AUDIO_OUTPUT_FLAG_VOIP_RX))
+        {
             if(mDirectOutput == 0) {
                 // open direct output stream
                 ALOGV(" AudioHardware::openOutputStream Direct output stream \n");
@@ -723,7 +731,9 @@ AudioStreamOut* AudioHardware::openOutputStream(
             else
                 ALOGE(" \n AudioHardware::AudioStreamOutDirect is already open");
             return mDirectOutput;
-        }else if (flags & AUDIO_OUTPUT_FLAG_LPA) {
+        }
+#ifdef QCOM_TUNNEL_LPA_ENABLED
+        else if (flags & AUDIO_OUTPUT_FLAG_LPA) {
             status_t err = BAD_VALUE;
             // create new output LPA stream
             AudioSessionOutLPA* out = new AudioSessionOutLPA(this, devices, *format, *channels,*sampleRate,0,&err);
@@ -735,6 +745,7 @@ AudioStreamOut* AudioHardware::openOutputStream(
             mOutputLPA = out;
             return mOutputLPA;
         }
+#endif //QCOM_TUNNEL_LPA_ENABLED
         else
         {
             ALOGV(" AudioHardware::openOutputStream AudioStreamOutMSM72xx output stream \n");
@@ -765,10 +776,17 @@ AudioStreamOut* AudioHardware::openOutputStream(
 
 void AudioHardware::closeOutputStream(AudioStreamOut* out) {
     Mutex::Autolock lock(mLock);
+#ifdef QCOM_TUNNEL_LPA_ENABLED
     if ((mOutput == 0 && mDirectOutput == 0 && mOutputLPA == 0) ||
         ((mOutput != out) && (mDirectOutput != out) && (mOutputLPA != out))){
         ALOGW("Attempt to close invalid output stream");
     }
+#else
+    if ((mOutput == 0 && mDirectOutput == 0) ||
+            ((mOutput != out) && (mDirectOutput != out))){
+            ALOGW("Attempt to close invalid output stream");
+        }
+#endif
     else if (mOutput == out) {
         delete mOutput;
         mOutput = 0;
@@ -778,11 +796,13 @@ void AudioHardware::closeOutputStream(AudioStreamOut* out) {
         delete mDirectOutput;
         mDirectOutput = 0;
     }
+#ifdef QCOM_TUNNEL_LPA_ENABLED
     else if (mOutputLPA == out) {
         ALOGV("Deleting  mOutputLPA \n");
         delete mOutputLPA;
         mOutputLPA = 0;
     }
+#endif
 }
 
 AudioStreamIn* AudioHardware::openInputStream(
@@ -3334,6 +3354,7 @@ AudioHardware::AudioStreamInMSM72xx *AudioHardware::getActiveInput_l()
     return NULL;
 }
 
+#ifdef QCOM_TUNNEL_LPA_ENABLED
 AudioHardware::AudioSessionOutLPA::AudioSessionOutLPA( AudioHardware *hw,
                                          uint32_t   devices,
                                          int        format,
@@ -4108,6 +4129,7 @@ status_t AudioHardware::AudioSessionOutLPA::getPresentationPosition(uint64_t *fr
     //TODO: enable when supported by driver
     return INVALID_OPERATION;
 }
+#endif //QCOM_TUNNEL_LPA_ENABLED
 
 status_t AudioHardware::setupDeviceforVoipCall(bool value)
 {
@@ -4128,7 +4150,7 @@ status_t AudioHardware::setupDeviceforVoipCall(bool value)
     return NO_ERROR;
 }
 
-
+#ifdef QCOM_TUNNEL_LPA_ENABLED
 status_t AudioHardware::AudioSessionOutLPA::getBufferInfo(buf_info **buf) {
 
     buf_info *tempbuf = (buf_info *)malloc(sizeof(buf_info) + mInputBufferCount*sizeof(int *));
@@ -4173,6 +4195,7 @@ status_t AudioHardware::AudioSessionOutLPA::isBufferAvailable(int *isAvail) {
     *isAvail = true;
     return NO_ERROR;
 }
+#endif //QCOM_TUNNEL_LPA_ENABLED
 
 AudioHardware::AudioStreamInVoip::AudioStreamInVoip() :
     mHardware(0), mFd(-1), mState(AUDIO_INPUT_CLOSED), mRetryCount(0),
